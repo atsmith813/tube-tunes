@@ -6,10 +6,11 @@ require 'watir'
 
 # YouTube link(s) to be converted
 links = []
-# Loop through unread (converted) emails to get links for songs
+# Loop through each unread email to get links that will be converted, then mark as read
 gmail = Gmail.connect(ENV['EMAIL'], ENV['PASSWORD'])
 	gmail.inbox.find(:unread, :subject => ENV['SUBJECT']).each do |email|
-		links += email.text_part ? email.text_part.body.decoded.split(' ') : nil   
+		links += email.text_part ? email.text_part.body.decoded.split(' ') : nil  
+		email.read! 
  	end
 gmail.logout
 
