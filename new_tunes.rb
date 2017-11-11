@@ -1,8 +1,9 @@
 require 'dotenv/load'
 require 'gmail'
 require 'watir'
+require 'colorize'
 
-### Loop through Gmail to buil links array of videos to be converted
+### Loop through Gmail to build the links array with videos to be converted
 
 # YouTube link(s) to be converted
 links = []
@@ -13,61 +14,69 @@ gmail = Gmail.connect(ENV['EMAIL'], ENV['PASSWORD'])
 		email.read! 
  	end
 gmail.logout
+puts "No new links were found".red if links.empty?
 
 ### Begin converting each link found in Gmail
+unless links.empty?
+  puts "Starting chrome..."
+  # Location that you want to save the files
+  download_directory = ENV['DOWNLOAD_DIRECTORY']
+  download_directory.gsub!("/", "\\") if Selenium::WebDriver::Platform.windows?
 
-# Location that you want to save the files
-download_directory = ENV['DOWNLOAD_DIRECTORY']
-download_directory.gsub!("/", "\\") if Selenium::WebDriver::Platform.windows?
+  # mp3 converter
+  converter = ENV['CONVERTER']
 
-# mp3 converter
-converter = ENV['CONVERTER']
+  # Set up Chrome preferences to set download directory and allow automatic downloads
+  preferences = {
+    download: {
+      prompt_for_download: false,
+      directory_upgrade: true,
+      default_directory: "download_directory"
+    }   
+  }  
 
-# Set up Chrome preferences to set download directory and allow automatica downloads
-preferences = {
-  :download => {
-    :prompt_for_download => false,
-    :directory_upgrade => true,
-    :default_directory => "download_directory"
-  }   
-}  
+  # Start browser
+  browser = Watir::Browser.new :chrome, prefs: preferences
+  browser.window.resize_to 1024, 768
 
-# Start browser
-browser = Watir::Browser.new :chrome, :prefs => preferences
+  # Loop through each link that was found from email
+  count = 0
+  links.each do |link|
+    count += 1
+  	file_name = nil
+  	downloads_before = Dir.entries download_directory
 
-# Loop through each link that was found from email
-links.each do |link|
-	file_name = nil
-	downloads_before = Dir.entries download_directory
+  	# Go to mp3 conversion site
+  	browser.goto(converter)
+  	# Fill in YouTube video link
+  	browser.input(name: 'url').send_keys(link)
+  	# Submit form
+    puts "Converting..."
+  	browser.form(:id, 'convertForm').submit
+  	# Waits until video is converted
+  	Watir::Wait.until { browser.button(class: ['btn', 'btn-success']).visible? }
+  	# Clicks next
+  	browser.button(class: ['btn', 'btn-success']).click
+  	# Waits until video is ready for download
+  	Watir::Wait.until { browser.link(class: ['btn', 'btn-success', 'btn-large']).visible? }
+  	# Download
+  	browser.link(class: ['btn', 'btn-success', 'btn-large']).click
+    puts "Downloading(" + "#{count.to_s}/#{links.size.to_s}".light_cyan +
+      ")..."
 
-	# Go to mp3 conversion site
-	browser.goto(converter)
-	# Fill in YouTube video link
-	browser.input(name: 'url').send_keys(link)
-	# Submit form
-	browser.form(:id, 'convertForm').submit
-	# Waits until video is converted
-	Watir::Wait.until { browser.button(:class => ['btn', 'btn-success']).visible? }
-	# Clicks next
-	browser.button(:class => ['btn', 'btn-success'], :text => 'Continue').click
-	# Waits until video is ready for download
-	Watir::Wait.until { browser.link(:class => ['btn', 'btn-success', 'btn-large']).visible? }
-	# Download
-	browser.link(:class => ['btn', 'btn-success', 'btn-large']).click
+  	# Checking for our new download
+  	difference = Dir.entries(download_directory) - downloads_before
+  	# Setting file name of our download
+  	file_name = difference.first
+  	# Check that file ends in .mp3 to determine if download is complete
+  	while !file_name.end_with? ".mp3"
+  		sleep 1
+  		difference = Dir.entries(download_directory) - downloads_before
+  		file_name = difference.first
+  	end
 
-	# Checking for our new download
-	difference = Dir.entries(download_directory) - downloads_before
-	# Setting file name of our download
-	file_name = difference.first
+  	puts "#{file_name.to_s.light_magenta} was successfully downloaded to #{download_directory.to_s.light_blue}."
+  end
 
-	# Check that file ends in .mp3 to determine if download is complete
-	while !file_name.end_with? ".mp3"
-		sleep 1
-		difference = Dir.entries(download_directory) - downloads_before
-		file_name = difference.first
-	end
-
-	p "#{file_name} was successfully downloaded to #{download_directory}."
+  browser.close
 end
-
-browser.close
