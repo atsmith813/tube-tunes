@@ -10,8 +10,8 @@ links = []
 # Loop through each unread email to get links that will be converted, then mark as read
 gmail = Gmail.connect(ENV['EMAIL'], ENV['PASSWORD'])
 	gmail.inbox.find(:unread, :subject => ENV['SUBJECT']).each do |email|
-		links += email.text_part ? email.text_part.body.decoded.split(' ') : nil  
-		email.read! 
+		links += email.text_part ? email.text_part.body.decoded.split(' ') : nil
+		email.read!
  	end
 gmail.logout
 puts "No new links were found".red if links.empty?
@@ -32,8 +32,8 @@ unless links.empty?
       prompt_for_download: false,
       directory_upgrade: true,
       default_directory: "download_directory"
-    }   
-  }  
+    }
+  }
 
   # Start browser
   browser = Watir::Browser.new :chrome, prefs: preferences
