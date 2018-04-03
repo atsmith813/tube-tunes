@@ -7,7 +7,7 @@ a script in Ruby to automate this process!
 
 ## How it works
 Whenever I find YouTube videos that I want to convert, I email them to myself with a
-designated subject line (i.e. new music) and I paste in the YouTube links sepearted
+designated subject line (i.e. new music) and I paste in the YouTube links separated
 by spaces ' ' into the body of the email.
 
 The script will poll the inbox for any unread messages of the designated subject line, parse
